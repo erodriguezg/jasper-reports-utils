@@ -12,7 +12,7 @@
 
     <groupId>com.github.erodriguezg</groupId>
     <artifactId>jasper-reports-utils</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>github erodriguezg jasper report utils</name>
     <description>Utilities for Jasper Reports</description>
     <url>https://github.com/erodriguezg/jasper-reports-utils</url>
@@ -54,37 +54,14 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <version.slf4j>1.7.25</version.slf4j>
+        <version.jasperreports>6.5.1</version.jasperreports>
         <version.junit>4.12</version.junit>
         <version.assertj>2.2.0</version.assertj>
         <version.mockito>1.10.19</version.mockito>
-        <version.commons-io>2.4</version.commons-io>
-        <version.commons-lang3>3.3.2</version.commons-lang3>
-        <version.commons-codec>1.9</version.commons-codec>
-        <version.jasperreports>5.6.1</version.jasperreports>
+        <version.h2db>1.4.196</version.h2db>
     </properties>
 
     <dependencies>
-
-        <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-            <version>${version.commons-io}</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>${version.commons-lang3}</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>commons-codec</groupId>
-            <artifactId>commons-codec</artifactId>
-            <version>${version.commons-codec}</version>
-            <scope>provided</scope>
-        </dependency>
 
         <dependency>
             <groupId>net.sf.jasperreports</groupId>
@@ -117,6 +94,13 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <version>${version.mockito}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>${version.h2db}</version>
             <scope>test</scope>
         </dependency>
 

@@ -1,18 +1,20 @@
 package com.github.erodriguezg.jasperreport;
 
+import com.github.erodriguezg.jasperreport.export.HtmlReportExporter;
 import com.github.erodriguezg.jasperreport.export.PdfReportExporter;
-import net.sf.jasperreports.engine.JRException;
+import com.github.erodriguezg.jasperreport.export.ReportExporter;
+import com.github.erodriguezg.jasperreport.export.XlsxReportExporter;
+import com.github.erodriguezg.jasperreport.generator.DatabaseReportGenerator;
+import com.github.erodriguezg.jasperreport.generator.ReportGenerator;
 import org.junit.Assert;
-import org.junit.Ignore;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.util.Properties;
+import java.sql.*;
 
 /**
  * Created by eduardo on 29-09-16.
@@ -20,37 +22,101 @@ import java.util.Properties;
 @SuppressWarnings("squid:S106")
 public class ReportJdbcIT {
 
+    private static final String ST_CREATE_TABLE_PERFIL =
+            "CREATE TABLE perfil ( " +
+                    "        id_perfil int4 NOT NULL, " +
+                    "        nombre varchar(250), " +
+                    "CONSTRAINT pk_perfil PRIMARY KEY (id_perfil))";
+
+    private static final String ST_CREATE_TABLE_USUARIO =
+            "CREATE TABLE usuario ( " +
+                    "                rut int4 NOT NULL, " +
+                    "                nombres varchar(250), " +
+                    "apellidos varchar(250), " +
+                    "password varchar(250), " +
+                    "email varchar(250), " +
+                    "fecha_nacimiento date, " +
+                    "perfil_id int4, " +
+                    "habilitado boolean, " +
+                    "CONSTRAINT pk_usuario PRIMARY KEY (rut), " +
+                    "CONSTRAINT fk_usuario FOREIGN KEY (perfil_id) " +
+                    "REFERENCES perfil (id_perfil))";
+
+    private static final String ST_INSERT_PERFIL =
+            "INSERT INTO perfil (id_perfil, nombre) VALUES (1, 'Super administrador')";
+
+    private static final String ST_INSERT_USUARIO =
+            "INSERT INTO usuario (rut, perfil_id, nombres, apellidos, password, fecha_nacimiento, email, habilitado) " +
+                    "VALUES (11111111, 1, 'Persona 1', 'Apellido', '70be2932a9786b17a1351b8d3b9fdf22', '1990-01-01', 'usuario1@zeke.cl', 'true')";
+
+
+    private static final String ST_QUERY_TEST =
+            "select * from usuario";
+
+    private ReportGenerator reportGenerator;
+    private JasperReportsUtils utils;
+
+    @BeforeClass
+    public static void crearBaseDatos() throws ClassNotFoundException {
+        Class.forName("org.h2.Driver");
+        System.out.println("creando base datos");
+        try {
+            Connection conn = getConnection();
+            Statement st = conn.createStatement();
+            st.execute(ST_CREATE_TABLE_PERFIL);
+            st.execute(ST_CREATE_TABLE_USUARIO);
+            st.execute(ST_INSERT_PERFIL);
+            st.execute(ST_INSERT_USUARIO);
+            conn.commit();
+            ResultSet resultSet = st.executeQuery(ST_QUERY_TEST);
+            if (resultSet.next()) {
+                System.out.println("se encontro usuario " + resultSet.getString("rut"));
+            } else {
+                throw new IllegalStateException("no se encontraron usuarios");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Before
+    public void before() throws SQLException {
+        System.out.println("creando componentes");
+        reportGenerator = new DatabaseReportGenerator(getConnection());
+        utils = new JasperReportsUtilsImpl();
+    }
 
     @Test
-    @Ignore
-    public void generarReporteJsfSprinJpa() throws IOException, JRException, SQLException, ClassNotFoundException {
-        Class.forName("org.postgresql.Driver");
+    public void testPDF() {
+        test(new PdfReportExporter());
+    }
 
+    @Test
+    public void testEXCEL() {
+        test(new XlsxReportExporter());
+    }
+
+    @Test
+    public void testHTML() {
+        test(new HtmlReportExporter());
+    }
+
+    private void test(ReportExporter exporter) {
         try (
                 InputStream jasperCompiladoStream = ReportJdbcIT.class.getResourceAsStream("/jasper/usuarios_jdbc.jasper");
                 Connection connection = getConnection();
         ) {
-            JasperReportsUtils utils = new JasperReportsUtilsImpl();
-            //File file = utils.generarReporteConQuery(jasperCompiladoStream, null, connection, new PdfReportExporter());
-            //System.out.println("file: " + file.getAbsolutePath());
-            //Assert.assertTrue(file.length() > 100);
+            File file = utils.crearReporte(jasperCompiladoStream, reportGenerator, exporter);
+            System.out.println("file: " + file.getAbsolutePath());
+            Assert.assertTrue(file.length() > 100);
+        } catch (IOException | SQLException e) {
+            throw new IllegalStateException(e);
         }
-
     }
 
     @SuppressWarnings("squid:S2068")
     public static Connection getConnection() throws SQLException {
-
-        Connection conn = null;
-        Properties connectionProps = new Properties();
-        connectionProps.put("user", "eduardo");
-        connectionProps.put("password", "cambiame");
-
-        conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/jsfspringjpa", connectionProps);
-
-        System.out.println("Connected to database");
-        return conn;
+        return DriverManager.getConnection("jdbc:h2:mem:db1", "sa", "");
     }
-
 
 }
