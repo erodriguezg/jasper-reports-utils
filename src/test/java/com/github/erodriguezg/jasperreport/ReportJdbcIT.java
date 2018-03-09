@@ -1,5 +1,8 @@
 package com.github.erodriguezg.jasperreport;
 
+import com.github.erodriguezg.jasperreport.cache.HashMapTmpJasperCache;
+import com.github.erodriguezg.jasperreport.cache.JasperCache;
+import com.github.erodriguezg.jasperreport.compilation.FileTmpCompilator;
 import com.github.erodriguezg.jasperreport.export.HtmlReportExporter;
 import com.github.erodriguezg.jasperreport.export.PdfReportExporter;
 import com.github.erodriguezg.jasperreport.export.ReportExporter;
@@ -7,7 +10,6 @@ import com.github.erodriguezg.jasperreport.export.XlsxReportExporter;
 import com.github.erodriguezg.jasperreport.generator.DatabaseReportGenerator;
 import com.github.erodriguezg.jasperreport.generator.ReportGenerator;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -21,6 +23,8 @@ import java.sql.*;
  */
 @SuppressWarnings("squid:S106")
 public class ReportJdbcIT {
+
+    private static final String REPORTE_JDBC = "reporte_jdbc";
 
     private static final String ST_CREATE_TABLE_PERFIL =
             "CREATE TABLE perfil ( " +
@@ -53,13 +57,16 @@ public class ReportJdbcIT {
     private static final String ST_QUERY_TEST =
             "select * from usuario";
 
-    private ReportGenerator reportGenerator;
-    private JasperReportsUtils utils;
+    private static ReportGenerator reportGenerator;
+    private static JasperReportsUtils utils;
+    private static JasperCache jasperCache;
 
     @BeforeClass
-    public static void crearBaseDatos() throws ClassNotFoundException {
+    public static void crearBaseDatos() throws ClassNotFoundException, IOException, SQLException {
+
+        System.out.println("creando base datos en memoria");
+
         Class.forName("org.h2.Driver");
-        System.out.println("creando base datos");
         try {
             Connection conn = getConnection();
             Statement st = conn.createStatement();
@@ -77,14 +84,19 @@ public class ReportJdbcIT {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-    }
 
-    @Before
-    public void before() throws SQLException {
         System.out.println("creando componentes");
+
         reportGenerator = new DatabaseReportGenerator(getConnection());
         utils = new JasperReportsUtilsImpl();
+        jasperCache = new HashMapTmpJasperCache();
+        try (
+                InputStream fuenteReporte = ReportJavaBeansIT.class.getResourceAsStream("/jrxml/usuarios_jdbc.jrxml");
+        ) {
+            jasperCache.putJasper(REPORTE_JDBC, utils.compilar(fuenteReporte, new FileTmpCompilator()));
+        }
     }
+
 
     @Test
     public void testPDF() {
@@ -102,16 +114,9 @@ public class ReportJdbcIT {
     }
 
     private void test(ReportExporter exporter) {
-        try (
-                InputStream jasperCompiladoStream = ReportJdbcIT.class.getResourceAsStream("/jasper/usuarios_jdbc.jasper");
-                Connection connection = getConnection();
-        ) {
-            File file = utils.crearReporte(jasperCompiladoStream, reportGenerator, exporter);
-            System.out.println("file: " + file.getAbsolutePath());
-            Assert.assertTrue(file.length() > 100);
-        } catch (IOException | SQLException e) {
-            throw new IllegalStateException(e);
-        }
+        File file = utils.crearReporte(jasperCache.getJasper(REPORTE_JDBC), reportGenerator, exporter);
+        System.out.println("file: " + file.getAbsolutePath());
+        Assert.assertTrue(file.length() > 100);
     }
 
     @SuppressWarnings("squid:S2068")
